@@ -5,6 +5,7 @@ module.exports = defineConfig({
   fullyParallel: true,
   reporter: "html",
   use: {
+    baseURL: "https://dashboard.prometeoapi.com",
     trace: "on-first-retry",
     headless: true,
   },
