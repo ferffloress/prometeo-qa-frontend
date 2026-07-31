@@ -40,7 +40,7 @@ test.describe("Registro de usuario Prometeo", () => {
 
   test.describe(
     "Verificación de campos obligatorios",
-    { tag: "@smoke" },
+    { tag: "@regression" },
     () => {
       test("Verificar mensajes de error al intentar enviar formulario vacío", async () => {
         await registerPage.submit();
