@@ -21,10 +21,16 @@ const mismatchedPasswords = {
   confirmPassword: "Different123!",
 };
 
+const nameWithInvalidCharacters = "Juan123!";
+
+const lastNameWithInvalidCharacters = "Pérez#$%";
+
 module.exports = {
   createValidUser,
   invalidEmailFormat,
   tooShortPassword,
   passwordWithoutComplexity,
   mismatchedPasswords,
+  nameWithInvalidCharacters,
+  lastNameWithInvalidCharacters,
 };
