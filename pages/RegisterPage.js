@@ -77,8 +77,6 @@ class RegisterPage {
       .locator('span[class*="form-message--error"]');
   }
 
-  // Único lugar con el texto de cada mensaje de error: si el sitio cambia la
-  // copia, se actualiza acá y los tests no se tocan.
   firstNameRequiredMessage() {
     return "Name is required";
   }
