@@ -9,4 +9,22 @@ function createValidUser(overrides = {}) {
   };
 }
 
-module.exports = { createValidUser };
+const invalidEmailFormat = "correo-invalido";
+
+const tooShortPassword = "123";
+
+// Cumple longitud mínima pero le falta un carácter especial.
+const passwordWithoutComplexity = "Password123";
+
+const mismatchedPasswords = {
+  password: "Password123!",
+  confirmPassword: "Different123!",
+};
+
+module.exports = {
+  createValidUser,
+  invalidEmailFormat,
+  tooShortPassword,
+  passwordWithoutComplexity,
+  mismatchedPasswords,
+};

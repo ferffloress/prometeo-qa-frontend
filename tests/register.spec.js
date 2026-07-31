@@ -1,8 +1,14 @@
 const { test, expect } = require("@playwright/test");
 const { RegisterPage } = require("../pages/RegisterPage");
-const { createValidUser } = require("../fixtures/users");
+const {
+  createValidUser,
+  invalidEmailFormat,
+  tooShortPassword,
+  passwordWithoutComplexity,
+  mismatchedPasswords,
+} = require("../fixtures/users");
 
-test.describe("Registro de usuario Prometeo", () => {
+test.describe("Registro exitoso", () => {
   test.beforeEach(async ({ page }) => {
     const registerPage = new RegisterPage(page);
     await registerPage.blockRegisterApi();
@@ -24,6 +30,56 @@ test.describe("Registro de usuario Prometeo", () => {
     await expect(registerPage.termsCheckbox).toBeVisible();
     await expect(registerPage.submitButton).toBeVisible();
     await expect(registerPage.submitButton).toBeEnabled();
+  });
+
+  test.describe("Comportamiento del botón de submit", () => {
+    test("Verificar registro de un usuario nuevo y que navega a la pantalla de éxito", async ({
+      page,
+    }) => {
+      const registerPage = new RegisterPage(page);
+      const user = createValidUser();
+
+      await registerPage.mockSuccessfulFlow(user);
+      await registerPage.goto();
+
+      await registerPage.registerWith(user);
+
+      await expect(registerPage.successMessage).toBeVisible();
+      await expect(registerPage.submitButton).toBeHidden();
+    });
+
+    test("Intentar enviar formulario con datos inválidos y verificar que no navegue", async ({
+      page,
+    }) => {
+      const registerPage = new RegisterPage(page);
+      await registerPage.goto();
+
+      await expect(registerPage.submitButton).toBeEnabled();
+
+      await registerPage.submit();
+
+      await expect(
+        registerPage.errorFor(registerPage.firstNameInput),
+      ).toBeVisible();
+      await expect(page).toHaveURL(/register-account/);
+      await expect(registerPage.submitButton).toBeEnabled();
+    });
+  });
+
+  test("Intentar registrar usuario cuando el servidor responde con error", async ({
+    page,
+  }) => {
+    const registerPage = new RegisterPage(page);
+    const user = createValidUser();
+
+    await registerPage.mockValidateEmail(true);
+    await registerPage.mockFailedRegister();
+    await registerPage.goto();
+
+    await registerPage.registerWith(user);
+
+    await expect(registerPage.serverErrorMessage).toBeVisible();
+    await expect(page).toHaveURL(/register-account/);
   });
 
   test("Intentar enviar formulario vacío para mostrar mensajes de error", async ({
@@ -70,26 +126,30 @@ test.describe("Registro de usuario Prometeo", () => {
     );
   });
 
-  test("Verificar registro de un usuario nuevo (datos válidos)", async ({
+  test("Intentar registrar usuario sin aceptar los términos y condiciones", async ({
     page,
   }) => {
     const registerPage = new RegisterPage(page);
     const user = createValidUser();
-
-    await registerPage.mockValidateEmail(true);
-    await registerPage.mockSuccessfulRegister(user);
     await registerPage.goto();
 
-    await registerPage.registerWith(user);
+    await registerPage.fillDetails(user);
+    await registerPage.submit();
 
-    await expect(registerPage.successMessage).toBeVisible();
+    await expect(registerPage.termsError).toHaveText(
+      registerPage.termsRequiredMessage(),
+    );
+    await expect(
+      registerPage.errorFor(registerPage.firstNameInput),
+    ).toBeHidden();
+    await expect(page).toHaveURL(/register-account/);
   });
 
   test("Intentar registrar usuario con email inválido", async ({ page }) => {
     const registerPage = new RegisterPage(page);
     await registerPage.goto();
 
-    await registerPage.typeInto(registerPage.emailInput, "correo-invalido");
+    await registerPage.typeInto(registerPage.emailInput, invalidEmailFormat);
 
     const validity = await registerPage.emailValidity();
     expect(validity.valid).toBe(false);
@@ -101,6 +161,23 @@ test.describe("Registro de usuario Prometeo", () => {
     await expect(page).toHaveURL(/register-account/); // seguimos en la misma pantalla
   });
 
+  // BUG: cuando /validate responde valid_email:false (ej. email ya registrado),
+  // el formulario lo ignora por completo: no muestra ningún error en el campo
+  // de email y el registro avanza igual hasta la pantalla de éxito.
+  test.fixme("Intentar registrar usuario con un email ya existente", async ({
+    page,
+  }) => {
+    const registerPage = new RegisterPage(page);
+    const user = createValidUser();
+
+    await registerPage.mockValidateEmail(false);
+    await registerPage.goto();
+
+    await registerPage.registerWith(user);
+
+    await expect(registerPage.errorFor(registerPage.emailInput)).toBeVisible();
+  });
+
   test.describe("Contraseñas inválidas o incompletas", () => {
     test("Intentar registrar usuario con contraseña demasiado corta", async ({
       page,
@@ -108,9 +185,7 @@ test.describe("Registro de usuario Prometeo", () => {
       const registerPage = new RegisterPage(page);
       await registerPage.goto();
 
-      await registerPage.typeInto(registerPage.passwordInput, "123");
-      await registerPage.typeInto(registerPage.confirmPasswordInput, "123");
-      await registerPage.submit();
+      await registerPage.submitPasswords(tooShortPassword, tooShortPassword);
 
       await expect(
         registerPage.errorFor(registerPage.passwordInput),
@@ -123,12 +198,10 @@ test.describe("Registro de usuario Prometeo", () => {
       const registerPage = new RegisterPage(page);
       await registerPage.goto();
 
-      await registerPage.typeInto(registerPage.passwordInput, "Password123");
-      await registerPage.typeInto(
-        registerPage.confirmPasswordInput,
-        "Password123",
+      await registerPage.submitPasswords(
+        passwordWithoutComplexity,
+        passwordWithoutComplexity,
       );
-      await registerPage.submit();
 
       await expect(
         registerPage.errorFor(registerPage.passwordInput),
@@ -143,51 +216,14 @@ test.describe("Registro de usuario Prometeo", () => {
     const tracker = await registerPage.trackRegisterCalls();
     await registerPage.goto();
 
-    await registerPage.typeInto(registerPage.passwordInput, "Password123!");
-    await registerPage.typeInto(
-      registerPage.confirmPasswordInput,
-      "Different123!",
+    await registerPage.submitPasswords(
+      mismatchedPasswords.password,
+      mismatchedPasswords.confirmPassword,
     );
-    await registerPage.submit();
 
     await expect(
       registerPage.errorFor(registerPage.confirmPasswordInput),
     ).toBeVisible();
     expect(tracker.count).toBe(0);
-  });
-
-  test.describe("Comportamiento del botón de submit", () => {
-    test("Intentar enviar formulario con datos inválidos y verificar que no navegue", async ({
-      page,
-    }) => {
-      const registerPage = new RegisterPage(page);
-      await registerPage.goto();
-
-      await expect(registerPage.submitButton).toBeEnabled();
-
-      await registerPage.submit();
-
-      await expect(
-        registerPage.errorFor(registerPage.firstNameInput),
-      ).toBeVisible();
-      await expect(page).toHaveURL(/register-account/);
-      await expect(registerPage.submitButton).toBeEnabled();
-    });
-
-    test("Verificar que navega a la pantalla de éxito cuando los datos son válidos", async ({
-      page,
-    }) => {
-      const registerPage = new RegisterPage(page);
-      const user = createValidUser();
-
-      await registerPage.mockValidateEmail(true);
-      await registerPage.mockSuccessfulRegister(user);
-      await registerPage.goto();
-
-      await registerPage.registerWith(user);
-
-      await expect(registerPage.successMessage).toBeVisible();
-      await expect(registerPage.submitButton).toBeHidden();
-    });
   });
 });
