@@ -28,25 +28,30 @@ class RegisterPage {
     this.serverErrorMessage = page.getByText(this.serverErrorMessageText());
   }
 
+  // Navega a la página de registro y espera a que el heading esté visible
   async goto() {
     await this.page.goto(REGISTER_PATH);
     await this.heading.waitFor();
   }
 
+  // Escribe un valor en un input simulando tipeo real y valida que haya quedado cargado
   async typeInto(locator, value) {
     await locator.click();
     await locator.pressSequentially(value, { delay: 10 });
     await expect(locator).toHaveValue(value);
   }
 
+  // Tilda el checkbox de términos y condiciones
   async acceptTerms() {
     await this.termsCheckbox.check({ force: true });
   }
 
+  // Hace click en el botón de submit del formulario
   async submit() {
     await this.submitButton.click();
   }
 
+  // Completa todos los campos del formulario de registro con los datos del usuario
   async fillDetails(user) {
     await this.typeInto(this.firstNameInput, user.firstName);
     await this.typeInto(this.lastNameInput, user.lastName);
@@ -59,64 +64,79 @@ class RegisterPage {
     );
   }
 
+  // Flujo completo de registro: completa datos, acepta términos y envía el formulario
   async registerWith(user) {
     await this.fillDetails(user);
     await this.acceptTerms();
     await this.submit();
   }
 
+  // Completa solo los campos de contraseña y confirmación, y envía el formulario
+  // (útil para tests que verifican validaciones de password)
   async submitPasswords(password, confirmPassword) {
     await this.typeInto(this.passwordInput, password);
     await this.typeInto(this.confirmPasswordInput, confirmPassword);
     await this.submit();
   }
 
+  // Devuelve el locator del mensaje de error asociado a un campo del formulario
   errorFor(fieldLocator) {
     return fieldLocator
       .locator('xpath=ancestor::div[contains(@class,"form-group")][1]')
       .locator('span[class*="form-message--error"]');
   }
 
+  // Texto de error cuando falta el nombre
   firstNameRequiredMessage() {
     return "Name is required";
   }
 
+  // Texto de error cuando falta el apellido
   lastNameRequiredMessage() {
     return "Last Name is required";
   }
 
+  // Texto de error cuando falta la empresa
   companyRequiredMessage() {
     return "Company Name is required";
   }
 
+  // Texto de error cuando falta el email
   emailRequiredMessage() {
     return "Corporate Email is required";
   }
 
+  // Texto de error cuando falta la contraseña
   passwordRequiredMessage() {
     return "Password is required";
   }
 
+  // Texto de error cuando falta la confirmación de contraseña
   confirmPasswordRequiredMessage() {
     return "Repeat Password is required";
   }
 
+  // Texto de error cuando no se aceptan los términos y condiciones
   termsRequiredMessage() {
     return "Terms of use and privacy conditions is required";
   }
 
+  // Texto de error cuando la contraseña es demasiado corta
   passwordTooShortMessage() {
     return "Password must be at least 8 char long";
   }
 
+  // Texto de error cuando la contraseña no cumple los requisitos de complejidad
   passwordComplexityMessage() {
     return "Your password must Contain Characters in Uppercase, Lowercase, Number and One Special Case Character";
   }
 
+  // Texto de error genérico devuelto por el servidor
   serverErrorMessageText() {
     return "An error has occurred, please try again";
   }
 
+  // Consulta la validez nativa del input de email (checkValidity/validationMessage del navegador)
   async emailValidity() {
     return this.emailInput.evaluate((el) => ({
       valid: el.checkValidity(),
@@ -131,6 +151,7 @@ class RegisterPage {
     );
   }
 
+  // Mockea la respuesta de validación de email (válido o inválido según el parámetro)
   mockValidateEmail(valid = true) {
     return this.page.route(VALIDATE_EMAIL_API, (route) =>
       route.fulfill({
@@ -141,6 +162,7 @@ class RegisterPage {
     );
   }
 
+  // Mockea una respuesta exitosa (201) de la API de registro con los datos del usuario
   mockSuccessfulRegister(user) {
     return this.page.route(REGISTER_API, (route) =>
       route.fulfill({
@@ -165,6 +187,7 @@ class RegisterPage {
     await this.mockSuccessfulRegister(user);
   }
 
+  // Mockea una respuesta de error de la API de registro (500 por defecto)
   mockFailedRegister(status = 500) {
     return this.page.route(REGISTER_API, (route) =>
       route.fulfill({
