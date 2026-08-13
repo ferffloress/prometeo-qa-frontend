@@ -1,3 +1,9 @@
+# NOTA: Este workflow fue realizado como parte de un challenge laboral y quedó
+# aquí solo como referencia para quien lo necesite revisar.
+# Se renombró a "playwright.yml.disabled" para que GitHub Actions no lo
+# reconozca como workflow activo y no se ejecute automáticamente (push, PR,
+# schedule) ni pueda dispararse manualmente.
+# Para reactivarlo, renombrar de vuelta a "playwright.yml".
 name: Playwright Tests
 on:
   push:
